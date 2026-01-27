@@ -1,1 +1,46 @@
+name: Scoop With Raya — Auto Feed
 
+on:
+  schedule:
+    - cron: "17 4 * * *"   # runs every day at 04:17 UTC; change if you prefer
+  push:
+    branches: [ "main" ]
+    paths:
+      - scripts/scrape_shahid_scoop.py
+      - .github/workflows/scoop_raya_auto.yml
+      - data/seen_ids.json
+  workflow_dispatch: {}      # lets you run it manually from the Actions tab
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4 lxml
+
+      - name: Generate feeds
+        run: |
+          python scripts/scrape_shahid_scoop.py
+
+      - name: Commit and push if changed
+        run: |
+          set -e
+          if git diff --quiet scoop_with_raya_backfill_100.xml scoop_with_raya_live.xml data/seen_ids.json; then
+            echo "No changes."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add scoop_with_raya_backfill_100.xml scoop_with_raya_live.xml data/seen_ids.json
+            git commit -m "chore: auto-update Scoop With Raya feeds"
+            git push
+          fi
