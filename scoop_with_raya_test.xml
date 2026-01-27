@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Scoop with Raya – Test Feed</title>
+    <link>https://www.mbc.net/scoop-with-raya</link>
+    <description>Test RSS feed for Scoop with Raya episodes</description>
+    <language>en-us</language>
+    <lastBuildDate>Tue, 27 Jan 2026 15:34:00 +0000</lastBuildDate>
+
+    <item>
+      <title>Scoop with Raya – Episode 1 (Test Item)</title>
+      <link>https://shahid.mbc.net/en/series/Scoop-with-Raya/episode-1/</link>
+      <guid isPermaLink="false">scoop_test_ep1</guid>
+      <pubDate>Sun, 25 Jan 2026 12:00:00 +0000</pubDate>
+      <description>This is a test placeholder entry for Scoop with Raya.</description>
+    </item>
+
+    <item>
+      <title>Scoop with Raya – Episode 2 (Test Item)</title>
+      <link>https://shahid.mbc.net/en/series/Scoop-with-Raya/episode-2/</link>
+      <guid isPermaLink="false">scoop_test_ep2</guid>
+      <pubDate>Mon, 26 Jan 2026 12:00:00 +0000</pubDate>
+      <description>Second test placeholder entry for Scoop with Raya.</description>
+    </item>
+
+  </channel>
+</rss>
