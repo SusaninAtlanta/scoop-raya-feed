@@ -5,18 +5,19 @@ permissions:
 
 on:
   schedule:
-    - cron: "17 4 * * *"   # runs every day at 04:17 UTC; change if you prefer
+    - cron: "17 4 * * *"   # every day at 04:17 UTC
   push:
     branches: [ "main" ]
     paths:
       - scripts/scrape_shahid_scoop.py
       - .github/workflows/scoop_raya_auto.yml
       - data/seen_ids.json
-  workflow_dispatch: {}      # lets you run it manually from the Actions tab
+  workflow_dispatch: {}      # allows manual run
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,21 +30,69 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests beautifulsoup4 lxml
+          # Add feedgen (commonly needed for RSS) and dateparser (safe date parsing)
+          pip install requests beautifulsoup4 lxml feedgen dateparser
 
-      - name: Generate feeds
+      - name: Ensure folders exist
         run: |
+          mkdir -p data
+          mkdir -p debug
+
+      - name: Run scraper to generate feeds
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: |
+          # If your script requires args, add them here
+          # Example: python scripts/scrape_shahid_scoop.py --out-live scoop_with_raya_live.xml --out-backfill scoop_with_raya_backfill_100.xml --state data/seen_ids.json --debug debug
           python scripts/scrape_shahid_scoop.py
+
+      - name: Validate generated XML files (best-effort)
+        run: |
+          python - << 'PY'
+          import sys, xml.etree.ElementTree as ET, pathlib
+          errors = 0
+          for fp in ["scoop_with_raya_live.xml", "scoop_with_raya_backfill_100.xml"]:
+              p = pathlib.Path(fp)
+              if p.exists():
+                  try:
+                      ET.parse(p)
+                      print(f"{fp}: XML is well-formed.")
+                  except ET.ParseError as e:
+                      print(f"{fp}: XML parse error: {e}")
+                      errors += 1
+              else:
+                  print(f"{fp}: not found (skipping validation)")
+          if errors:
+              sys.exit(1)
+          PY
+
+      - name: Upload run artifacts (for debugging)
+        uses: actions/upload-artifact@v4
+        with:
+          name: scoop-raya-run
+          path: |
+            scoop_with_raya_live.xml
+            scoop_with_raya_backfill_100.xml
+            data/seen_ids.json
+            debug/**
 
       - name: Commit and push if changed
         run: |
           set -e
-          if git diff --quiet scoop_with_raya_backfill_100.xml scoop_with_raya_live.xml data/seen_ids.json; then
-            echo "No changes."
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add scoop_with_raya_backfill_100.xml scoop_with_raya_live.xml data/seen_ids.json
-            git commit -m "chore: auto-update Scoop With Raya feeds"
-            git push
+
+          # Create empty files if they don't exist yet, so git diff doesn't fail
+          [ -f scoop_with_raya_live.xml ] || touch scoop_with_raya_live.xml
+          [ -f scoop_with_raya_backfill_100.xml ] || touch scoop_with_raya_backfill_100.xml
+          [ -f data/seen_ids.json ] || echo "{}" > data/seen_ids.json
+
+          # Check if any of the target files changed
+          if git diff --quiet -- scoop_with_raya_backfill_100.xml scoop_with_raya_live.xml data/seen_ids.json; then
+            echo "No changes to commit."
+            exit 0
           fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scoop_with_raya_backfill_100.xml scoop_with_raya_live.xml data/seen_ids.json
+          git commit -m "chore: auto-update Scoop With Raya feeds [skip ci]"
+          git push
